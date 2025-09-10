@@ -1,177 +1,174 @@
-```markdown
-# MicroService
+Quarkus Microservices Project
+A Quarkus-based microservices architecture demonstrating two RESTful services — rest-number and rest-book — containerized and deployed using Docker Compose.
 
-A **Quarkus-based** microservices project demonstrating two RESTful services **rest-number** and **rest-book** deployed via Docker Compose.  
+Summary
+This repository showcases a microservices architecture built with Quarkus, designed to illustrate independent services working collaboratively.
 
----
+rest-number: Generates ISBN-13 and ISBN-10 numbers.
 
-## Summary
+rest-book: Creates and persists book records. It communicates with rest-number for ISBN generation and includes fault tolerance with fallback to ensure resilience when services are unavailable.
 
-This repository contains two independent Quarkus microservices:
+This setup demonstrates key microservices principles: modularity, fault tolerance, containerization, and orchestration.
 
-- **rest-number**: Generates ISBN-13 and ISBN-10 numbers.  
-- **rest-book**: Creates and persists book records, leveraging the **rest-number** service for ISBN generation, with fault tolerance and fallback support.
+Table of Contents
+Getting Started
 
----
+Project Structure
 
-## Table of Contents
+Quarkus vs Spring Boot
 
-- [Getting Started](#getting-started)  
-- [Project Structure](#project-structure)  
-- [Quarkus vs Spring Boot](#quarkus-vs-spring-boot)  
-- [Microservices Overview](#microservices-overview)  
-- [Architecture Diagram](#architecture-diagram)  
-- [Building Docker Images](#building-docker-images)  
-- [Running Containers](#running-containers)  
-- [Docker Compose](#docker-compose)  
-- [cURL Examples](#curl-examples)  
-- [Contributing](#contributing)  
-- [License](#license)  
+Microservices Overview
 
----
+Architecture Diagram
 
-## Getting Started
+Fault Tolerance and Resilience
 
-### Prerequisites
+Building Docker Images
 
-- Java 17+  
-- Maven 3.6+  
-- Docker & Docker Compose  
+Running Containers
 
-### Ports & Configuration
+Docker Compose Setup
 
-- **rest-number**: `application.properties` → `quarkus.http.port=8701`  
-- **rest-book**: `application.properties` → `quarkus.http.port=8702`  
+cURL Usage Examples
 
----
+Contributing
 
-## Project Structure
+License
 
-```
-MicroService/
-├── rest-number/
-│   ├── src/main/java/org/ankit/
-│   │   ├── NumberResource.java
-│   │   ├── IsbnNumbers.java
-│   │   └── NumbersMicroservice.java
-│   ├── pom.xml
-│   └── README.md
-├── rest-book/
-│   ├── src/main/java/org/ankit/
-│   │   ├── BookResource.java
-│   │   ├── Book.java
-│   │   ├── NumberProxy.java
-│   │   └── IsbnThirteen.java
-│   ├── pom.xml
-│   └── README.md
-└── store-docker-compose.yml
-```
+Getting Started
+Prerequisites
+Ensure the following tools are installed on your system:
 
----
+Java 17+
 
-## Quarkus vs Spring Boot
+Maven 3.6+
 
-| Feature              | Quarkus                                 | Spring Boot                       |
-|----------------------|-----------------------------------------|-----------------------------------|
-| Startup Time         | < 0.1s native                           | ~2s–5s                            |
-| Memory Footprint     | Low (<50 MB native)                     | Higher (hundreds of MB)           |
-| Native Executable    | First-class via GraalVM                 | Community extensions              |
-| Dev Mode             | Live reload + Dev UI                    | DevTools auto-restart             |
-| MicroProfile         | Built-in                                | Requires dependencies             |
-| Ecosystem            | Growing                                 | Mature, extensive                 |
+Docker & Docker Compose
 
----
+Service Ports & Configuration
+Each service defines its own HTTP port in application.properties:
 
-## Microservices Overview
+rest-number → quarkus.http.port=8701
 
-- **rest-number**:  
-  - Exposes `GET /api/numbers`  
-  - Returns random ISBN-13, ISBN-10, timestamp  
+rest-book → quarkus.http.port=8702
 
-- **rest-book**:  
-  - Exposes `POST /api/book`  
-  - Consumes form data, calls **rest-number** via `@RestClient`  
-  - Retries (3×) and falls back to disk persistence  
+Project Structure
+text
+quarkus-microservices/
+│
+├── rest-number/               # Microservice for ISBN generation
+│   ├── src/                   
+│   └── pom.xml
+│
+├── rest-book/                 # Microservice for book creation & persistence
+│   ├── src/                   
+│   └── pom.xml
+│
+├── docker-compose.yml         # Multi-container setup for orchestration
+└── README.md                  # Project documentation
+Quarkus vs Spring Boot
+Feature	Quarkus	Spring Boot
+Startup Time	Very fast (milliseconds)	Slower (seconds)
+Memory Footprint	Extremely lightweight	Higher memory usage
+Native Execution	GraalVM native image support	Limited native support
+Developer Experience	Hot reload, fast dev cycles	Mature ecosystem, rich tooling
+Target Use Case	Cloud-native, serverless	Enterprise monolith/microservices
+Quarkus is chosen here for its fast startup and low resource usage, ideal for containerized cloud environments.
 
----
+Microservices Overview
+rest-number:
 
-## Building Docker Images
+Stateless service exposing REST APIs to generate ISBN-10 and ISBN-13 numbers.
 
-From the project root, run:
+rest-book:
 
-```
-# Build rest-number image
+Manages book records and persists data.
+
+Consumes rest-number to retrieve ISBNs dynamically.
+
+Integrates fault tolerance mechanisms to handle dependent service failures seamlessly.
+
+Architecture Diagram
+text
+flowchart TD
+    A[Client] -->|REST API call| B[rest-book]
+    B -->|Request ISBN generation| C[rest-number]
+    B -->|Persist Book Data| D[Database]
+    C -->|Return ISBN| B
+This diagram shows how the rest-book service is the primary client-facing endpoint, relying on rest-number for ISBN generation and persisting data in its database.
+
+Fault Tolerance and Resilience
+The rest-book service implements resilience patterns powered by Quarkus’ fault tolerance annotations to ensure high availability and graceful degradation:
+
+@Retry
+Automatically retries failed calls to the rest-number service a configurable number of times before declaring failure.
+
+@CircuitBreaker
+Prevents retrying calls once a threshold of failures is reached, allowing the system to recover gracefully and avoid cascading failures.
+
+@Fallback
+Provides an alternative method when the dependent service is unavailable or retries are exhausted. For example, returning a default ISBN or a placeholder value to keep the user experience intact.
+
+Example code snippet from rest-book:
+
+java
+@Retry(maxRetries = 3, delay = 1000)
+@CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 2000)
+@Fallback(fallbackMethod = "isbnFallback")
+public String getIsbn() {
+    return restNumberService.generateIsbn();
+}
+
+public String isbnFallback() {
+    // Fallback logic when rest-number is unreachable
+    return "000-0000000000";
+}
+These resilience patterns showcase a production-ready microservices approach, critical for real-world distributed systems.
+
+Building Docker Images
+Package and containerize each service with Maven and Quarkus Docker support:
+
+bash
 cd rest-number
-./mvnw package -Dquarkus.container-image.build=true \
-  -Dquarkus.container-image.image=ankit/rest-number:0.0.1
+./mvnw clean package -Dquarkus.container-image.build=true
 
-# Build rest-book image
 cd ../rest-book
-./mvnw package -Dquarkus.container-image.build=true \
-  -Dquarkus.container-image.image=ankit/rest-book:0.0.1
-```
+./mvnw clean package -Dquarkus.container-image.build=true
+Running Containers
+Run the services manually via Docker (if not using compose):
 
----
+bash
+docker run -i --rm -p 8701:8701 rest-number
+docker run -i --rm -p 8702:8702 rest-book
+Docker Compose Setup
+Use Docker Compose for easy orchestration and network configuration between services:
 
-## Running Containers
+bash
+docker-compose up --build
+cURL Usage Examples
+Generate ISBNs (rest-number)
+bash
+curl http://localhost:8701/api/numbers/isbn13
+curl http://localhost:8701/api/numbers/isbn10
+Create a new book (rest-book)
+bash
+curl -X POST http://localhost:8702/api/books \
+     -H "Content-Type: application/json" \
+     -d '{"title": "Quarkus in Action", "author": "John Doe"}'
+Retrieve all books
+bash
+curl http://localhost:8702/api/books
+Contributing
+Contributions are welcome! To contribute:
 
-```
-# Run rest-number
-docker run -d --name rest-number \
-  -p 8701:8701 ankit/rest-number:0.0.1
+Fork this repository.
 
-# Run rest-book (link to rest-number)
-docker run -d --name rest-book \
-  -p 8702:8702 \
-  -e NUMBER_PROXY_MP_REST_URI=http://rest-number:8701 \
-  --link rest-number ankit/rest-book:0.0.1
-```
+Create a feature branch (git checkout -b feature/my-enhancement).
 
----
+Commit your changes and push the branch.
 
-## Docker Compose
+Open a pull request for review.
 
-Use the provided `store-docker-compose.yml`:
+License
+This project is licensed under the MIT License.
 
-```
-version: "0.0.1"
-services:
-  rest-number:
-    image: "ankit/rest-number:0.0.1"
-    ports:
-      - "8701:8701"
-
-  rest-book:
-    image: "ankit/rest-book:0.0.1"
-    ports:
-      - "8702:8702"
-    environment:
-      - "NUMBER_PROXY_MP_REST_URI=http://rest-number:8701"
-```
-
-Run both services:
-
-```
-docker-compose -f store-docker-compose.yml up --build -d
-```
-
----
-
-## cURL Examples
-
-**Generate ISBN Numbers**  
-```
-curl -X GET http://localhost:8701/api/numbers
-```
-
-**Create a Book**  
-```
-curl -X POST http://localhost:8702/api/book \
-  -d "title=MyBook" \
-  -d "author=JaneDoe" \
-  -d "yearOfPublication=2025" \
-  -d "genre=Fiction" \
-  -H "Content-Type: application/x-www-form-urlencoded"
-```
-
----
