@@ -156,7 +156,7 @@ curl http://localhost:8701/api/numbers
 ```
 curl -X POST http://localhost:8702/api/books \  
      -H "Content-Type: application/json" \  
-     -d '{"title": "Quarkus in Action", "author": "John Doe"}'  
+     -d '{"title": "Quarkus in Action", "author": "John Doe", "year":2025, "genre":"Hire Me"}'  
 ```
 
 ### Retrieve all books 
