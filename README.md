@@ -80,14 +80,27 @@ Quarkus is chosen here for its **fast startup and low resource usage**, ideal fo
 
 
 ```
-## Architecture Diagram  
+## Architecture Diagram
+ 
+flowchart TD
+    subgraph Client
+        C[User Client]
+    end
 
-flowchart TD  
-    A[Client] -->|REST API call| B[rest-book]  
-    B -->|Request ISBN generation| C[rest-number]  
-    B -->|Persist Book Data| D[Database]  
-    C -->|Return ISBN| B  
+    subgraph Microservices
+        direction TB
+        RB[📚 rest-book Service]
+        RN[🔢 rest-number Service]
+    end
 
+    subgraph Storage
+        DB[(💾 Book Database)]
+    end
+
+    C -->|Calls REST API| RB
+    RB -->|Requests ISBN generation| RN
+    RN -->|Returns ISBN| RB
+    RB -->|Persists book data| DB
 ```
 This diagram shows how the **rest-book** service is the primary client-facing endpoint, relying on **rest-number** for ISBN generation and persisting data in its database.
 
